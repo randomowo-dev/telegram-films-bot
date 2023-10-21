@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: build/package/Dockerfile
+    environment:
+      PORT: 8080
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+    depends_on:
+      - database
+    ports:
+      - "8080:8080"
+
+  database:
+    image: postgres:16.0
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
