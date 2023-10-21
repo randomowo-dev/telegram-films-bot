@@ -1,3 +1,3 @@
-module github.com/randomowo/telegram-films-bot
+module github.com/randomowo-dev/telegram-films-bot
 
 go 1.21
