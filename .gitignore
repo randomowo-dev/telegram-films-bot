@@ -2,4 +2,5 @@
 
 .env
 
-.go-version
+.rtx.toml
+

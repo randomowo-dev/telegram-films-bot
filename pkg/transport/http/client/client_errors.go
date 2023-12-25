@@ -1,16 +1,16 @@
-package http
+package client
 
 import (
 	"fmt"
 )
 
-type ClientErrorResponse struct {
+type ErrorResponse struct {
 	Reason           string
 	StatusCode       int
 	DeveloperMessage string
 	Retry            bool
 }
 
-func (e *ClientErrorResponse) Error() string {
+func (e *ErrorResponse) Error() string {
 	return fmt.Sprintf("%d: %s (dev msg: %s)", e.StatusCode, e.Reason, e.DeveloperMessage)
 }

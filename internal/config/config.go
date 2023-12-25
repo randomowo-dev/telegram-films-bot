@@ -2,17 +2,13 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 var (
-	// kinopoiskapiunofficial.tech
-	KinopoiskApiUnofficialUrl = getEnv(
-		"KINOPOISK_API_UNOFFICIAL_URL",
-		"https://kinopoiskapiunofficial.tech",
-	)
-	KinopoiskApiUnofficialToken           = getEnv("KINOPOISK_API_UNOFFICIAL_TOKEN", "")
-	KinopoiskApiUnofficialFilmsApiVersion = getEnv("KINOPOISK_API_UNOFFICIAL_FILMS_API_VERSION", "v2.2")
-	KinopoiskApiUnofficialStaffApiVersion = getEnv("KINOPOISK_API_UNOFFICIAL_STAFF_API_VERSION", "v1")
+	Port, _    = strconv.Atoi(getEnv("APP_PORT", "8080"))
+	AppVersion = getEnv("APP_VERSION", "MISSING")
+	AppName    = getEnv("APP_NAME", "film-list")
 )
 
 func getEnv(key, defaultValue string) string {

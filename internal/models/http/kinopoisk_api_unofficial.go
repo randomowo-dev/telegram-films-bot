@@ -46,6 +46,7 @@ func parseFilmProductionStatus(status string) FilmProductionStatus {
 	case "POST_PRODUCTION":
 		return PostProduction
 	}
+
 	return UnknownStatus
 }
 
@@ -100,6 +101,7 @@ func parseFilmType(ft string) FilmType {
 	case "TV_SHOW":
 		return TvShow
 	}
+
 	return UnknownType
 }
 
@@ -299,12 +301,12 @@ type FilmObj struct {
 	NameRu                  string               `json:"nameRu"`
 	NameEn                  string               `json:"nameEn"`
 	NameOriginal            string               `json:"nameOriginal"`
-	PosterUrlPreview        string               `json:"posterUrlPreview"`
+	PosterURLPreview        string               `json:"posterUrlPreview"`
 	RatingGoodReviewPercent float32              `json:"ratingGoodReview"`
 	RatingKinopoisk         float32              `json:"ratingKinopoisk"`
 	RatingImdb              float32              `json:"ratingImdb"`
 	RatingFilmCritics       float32              `json:"ratingFilmCritics"`
-	KinopoiskWebUrl         string               `json:"webUrl"`
+	KinopoiskWebURL         string               `json:"webUrl"`
 	Year                    int                  `json:"year"`
 	FilmLengthSeconds       int                  `json:"filmLengthSeconds"`
 	ShortDescription        string               `json:"shortDescription"`
@@ -456,6 +458,7 @@ func parseStaffProfession(status string) StaffProfession {
 	case "VOICE_DIRECTOR":
 		return VoiceDirector
 	}
+
 	return UnknownProfession
 }
 
@@ -466,6 +469,7 @@ func (p *StaffProfession) UnmarshalJSON(data []byte) error {
 	}
 
 	*p = parseStaffProfession(productionStatus)
+
 	return nil
 }
 
@@ -478,7 +482,7 @@ type FilmStaff []struct {
 
 type Staff struct {
 	ID              int    `json:"ID"`
-	KinopoiskWebUrl string `json:"webUrl"`
+	KinopoiskWebURL string `json:"webUrl"`
 	NameRu          string `json:"nameRu"`
 	NameEn          string `json:"nameEn"`
 	Films           []struct {

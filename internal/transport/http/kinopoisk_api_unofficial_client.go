@@ -11,13 +11,13 @@ import (
 
 	"github.com/randomowo-dev/telegram-films-bot/internal/config"
 	models "github.com/randomowo-dev/telegram-films-bot/internal/models/http"
-	"github.com/randomowo-dev/telegram-films-bot/pkg/transport/http"
+	"github.com/randomowo-dev/telegram-films-bot/pkg/transport/http/client"
 	httpUtils "github.com/randomowo-dev/telegram-films-bot/pkg/utils/http"
 	"go.uber.org/zap"
 )
 
 type KinopoiskApiUnofficialClient struct {
-	client http.Client
+	client *client.Client
 }
 
 type kinopoiskApiUnofficialPath string
@@ -316,22 +316,22 @@ func (c *KinopoiskApiUnofficialClient) do(req *netHttp.Request) ([]byte, error) 
 	var statusError error
 	switch resp.StatusCode {
 	case netHttp.StatusUnauthorized:
-		statusError = &http.ClientErrorResponse{
+		statusError = &client.ErrorResponse{
 			Reason:     "empty or wrong token",
 			StatusCode: resp.StatusCode,
 		}
 	case netHttp.StatusPaymentRequired:
-		statusError = &http.ClientErrorResponse{
+		statusError = &client.ErrorResponse{
 			Reason:     "exceeded request limit",
 			StatusCode: resp.StatusCode,
 		}
 	case netHttp.StatusNotFound:
-		statusError = &http.ClientErrorResponse{
+		statusError = &client.ErrorResponse{
 			Reason:     "not found",
 			StatusCode: resp.StatusCode,
 		}
 	case netHttp.StatusTooManyRequests:
-		statusError = &http.ClientErrorResponse{
+		statusError = &client.ErrorResponse{
 			Reason:     "to many requests",
 			StatusCode: resp.StatusCode,
 			Retry:      true,
@@ -358,4 +358,10 @@ func (c *KinopoiskApiUnofficialClient) do(req *netHttp.Request) ([]byte, error) 
 	}
 
 	return body, nil
+}
+
+func NewKinopoiskApiUnofficialClient(client *client.Client) *KinopoiskApiUnofficialClient {
+	return &KinopoiskApiUnofficialClient{
+		client: client,
+	}
 }
