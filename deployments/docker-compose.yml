@@ -1,22 +1,51 @@
 version: "3.9"
 
 services:
-  bot:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - "../configs/nginx:/etc/nginx/"
+      - "../website/film_list/dist:/var/www/html"
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+
+  backend:
+    image: ${COMPOSE_PROJECT}_backend:go1.21
+    pull_policy: never
     build:
-      context: .
-      dockerfile: build/package/Dockerfile
+      context: ../
+      dockerfile: build/package/backend
     environment:
-      PORT: 8080
-      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      APP_NAME: ${APP_NAME}
+      APP_VERSION: ${APP_VERSION}
+
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_USERNAME: ${DB_USERNAME}
+
+      SERVER_AUTH_PASSWORD: ${SERVER_AUTH_PASSWORD}
+      SERVER_AUTH_USERNAME: ${SERVER_AUTH_USERNAME}
+      SERVER_AUTH_SECRET: ${SERVER_AUTH_SECRET}
+      SERVER_PORT: ${SERVER_PORT}
+
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       - database
-    ports:
-      - "8080:8080"
 
   database:
-    image: postgres:16.0
+    image: mongo:latest
     restart: always
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - "database:/data/db"
     ports:
-      - "5433:5432"
+      - "27017:27017"
+
+volumes:
+  database:

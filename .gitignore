@@ -2,5 +2,6 @@
 
 .env
 
-.rtx.toml
+.tool-versions
 
+**/*/dist
