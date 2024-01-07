@@ -5,7 +5,7 @@ import (
 )
 
 type User struct {
-	ID         string    `bson:"_id"`
+	ID         string    `bson:"_id,omitempty"`
 	TelegramID int64     `bson:"telegram_id"`
 	Username   string    `bson:"username"`
 	LastAuth   time.Time `bson:"last_auth"`

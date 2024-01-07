@@ -3,19 +3,19 @@ package http
 import (
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
 	TelegramID int64 `json:"telegram_id"`
 	Scope      Scope `json:"scope"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type Scope uint8
 
 const (
-	Refresh Scope = iota
+	Auth Scope = iota
 	Api
 )
 

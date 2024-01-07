@@ -4,17 +4,20 @@ import (
 	"context"
 	netHttp "net/http"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/randomowo-dev/telegram-films-bot/internal/controllers"
 	"github.com/randomowo-dev/telegram-films-bot/internal/middlewares"
+	httpModels "github.com/randomowo-dev/telegram-films-bot/internal/models/http"
 	"github.com/randomowo-dev/telegram-films-bot/internal/services"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/randomowo-dev/telegram-films-bot/internal/database"
+	"github.com/randomowo-dev/telegram-films-bot/internal/transport/http"
+	"github.com/randomowo-dev/telegram-films-bot/internal/transport/nosql"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/randomowo-dev/telegram-films-bot/internal/database"
-	"github.com/randomowo-dev/telegram-films-bot/internal/transport/http"
-	"github.com/randomowo-dev/telegram-films-bot/internal/transport/nosql"
 )
 
 func Run() {
@@ -29,9 +32,11 @@ func Run() {
 	}
 
 	userDB := database.NewUserDB(db)
+	authDB := database.NewAuthDB(db)
 	// listDB := database.NewListDB(db)
 
-	authController := controllers.NewAuthController(services.NewAuthService(userDB))
+	jwtAuth := middlewares.NewJWTAuthorization(authDB)
+	authController := controllers.NewAuthController(services.NewAuthService(userDB, authDB), jwtAuth)
 
 	manageGroup := server.Group("/manage", middlewares.BasicAuthorization)
 	manageGroup.Add(
@@ -47,13 +52,15 @@ func Run() {
 	)
 
 	apiGroup := server.Group("/api")
+	groupV1 := apiGroup.Group("/v1")
 
-	authGroup := apiGroup.Group("/auth")
+	authGroup := groupV1.Group("/auth")
+
 	authGroup.Add(netHttp.MethodGet, "/", authController.AuthUser)
-	authGroup.Add(netHttp.MethodGet, "/refresh", authController.RefreshToken)
+	authGroup.Add(netHttp.MethodPut, "/refresh", authController.RefreshToken)
+	authGroup.Add(netHttp.MethodPost, "/logout", authController.LogOut)
 
-	gV1 := apiGroup.Group("v1", middlewares.JWTAuthorizationMiddleware)
-	listGroup := gV1.Group("list")
+	listGroup := groupV1.Group("list", jwtAuth.Middleware(httpModels.Api))
 
 	listGroup.Add(
 		netHttp.MethodGet, "/", func(ctx *fiber.Ctx) error {

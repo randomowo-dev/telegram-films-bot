@@ -11,15 +11,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt"
 	"github.com/randomowo-dev/telegram-films-bot/internal/config"
+	"github.com/randomowo-dev/telegram-films-bot/internal/middlewares"
 	httpModels "github.com/randomowo-dev/telegram-films-bot/internal/models/http"
 	"github.com/randomowo-dev/telegram-films-bot/internal/services"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type AuthController struct {
-	authService *services.AuthService
+	authService    *services.AuthService
+	authMiddleware *middlewares.JWTAuthorization
 }
 
 func (c *AuthController) AuthUser(ctx *fiber.Ctx) error {
@@ -64,29 +66,16 @@ func (c *AuthController) AuthUser(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
-	tokenString := ctx.Get("Authorization")
-	if tokenString == "" {
-		return ctx.SendStatus(netHttp.StatusUnauthorized)
+	code, err := c.authMiddleware.Auth(ctx, httpModels.Auth)
+	if err != nil {
+		return err
+	}
+	if code != 0 {
+		return ctx.SendStatus(code)
 	}
 
-	claims := new(httpModels.Claims)
-	token, err := jwt.ParseWithClaims(
-		tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return config.ServerAuthSecret, nil
-		},
-	)
-	if err != nil || !token.Valid || time.Now().UTC().After(time.Unix(0, claims.ExpiresAt)) {
-		return ctx.SendStatus(netHttp.StatusUnauthorized)
-	}
-
-	if claims.Scope != httpModels.Refresh {
-		return ctx.SendStatus(netHttp.StatusForbidden)
-	}
-
-	data, err := c.authService.RefreshUserToken(ctx.UserContext(), claims.TelegramID)
+	telegramID, _ := ctx.Locals("telegram_id").(int64)
+	data, err := c.authService.RefreshUserToken(ctx.UserContext(), telegramID)
 	if err != nil {
 		return ctx.SendStatus(netHttp.StatusInternalServerError) // FIXME
 	}
@@ -94,8 +83,29 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 	return ctx.JSON(data)
 }
 
-func NewAuthController(authService *services.AuthService) *AuthController {
+func (c *AuthController) LogOut(ctx *fiber.Ctx) error {
+	code, err := c.authMiddleware.Auth(ctx, httpModels.Auth)
+	if err != nil {
+		return err
+	}
+	if code != 0 {
+		return ctx.SendStatus(code)
+	}
+
+	telegramID, _ := ctx.Locals("telegram_id").(int64)
+	if err := c.authService.LogOut(ctx.UserContext(), telegramID); err != nil {
+		return ctx.SendStatus(netHttp.StatusInternalServerError)
+	}
+
+	return ctx.SendStatus(netHttp.StatusOK)
+}
+
+func NewAuthController(
+	authService *services.AuthService,
+	authMiddleware *middlewares.JWTAuthorization,
+) *AuthController {
 	return &AuthController{
-		authService: authService,
+		authService:    authService,
+		authMiddleware: authMiddleware,
 	}
 }

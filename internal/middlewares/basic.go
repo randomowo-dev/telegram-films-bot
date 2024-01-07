@@ -3,8 +3,9 @@ package middlewares
 import (
 	netHttp "net/http"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/randomowo-dev/telegram-films-bot/internal/config"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func BasicAuthorization(ctx *fiber.Ctx) error {

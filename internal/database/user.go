@@ -6,6 +6,7 @@ import (
 
 	dbModels "github.com/randomowo-dev/telegram-films-bot/internal/models/database"
 	"github.com/randomowo-dev/telegram-films-bot/internal/transport/nosql"
+
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -13,25 +14,35 @@ type UserDB struct {
 	db *nosql.DB
 }
 
-func (db *UserDB) UpdateByTelegramID(ctx context.Context, user *dbModels.User) error {
-	user.Updated = time.Now()
-	res, err := db.db.Collection("user").UpdateOne(
-		ctx,
-		bson.D{{"telegram_id", user.TelegramID}},
-		bson.D{{"$set", user}},
+func (db *UserDB) UpdateByTelegramID(ctx context.Context, telegramID int64) (string, error) {
+	user, err := db.GetByTelegramID(ctx, telegramID)
+	if err != nil {
+		return "", err
+	}
+	if user == nil {
+		return "", nil
+	}
+
+	now := time.Now().UTC()
+	_, err = db.db.Collection("user").UpdateByID(
+		ctx, user.ID, bson.D{
+			{
+				"$set",
+				bson.D{
+					{"last_auth", now},
+					{"updated", now},
+				},
+			},
+		},
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if res.ModifiedCount > 0 {
-		return nil
-	}
-
-	return db.Add(ctx, user)
+	return user.ID, nil
 }
 
-func (db *UserDB) FindByTelegramID(ctx context.Context, telegramID int64) (*dbModels.User, error) {
+func (db *UserDB) GetByTelegramID(ctx context.Context, telegramID int64) (*dbModels.User, error) {
 	user := new(dbModels.User)
 	err := db.db.Collection("user").FindOne(ctx, bson.D{{"telegram_id", telegramID}}).Decode(user)
 	if err != nil {
@@ -42,10 +53,16 @@ func (db *UserDB) FindByTelegramID(ctx context.Context, telegramID int64) (*dbMo
 }
 
 func (db *UserDB) Add(ctx context.Context, user *dbModels.User) error {
-	user.Created = time.Now()
-	user.Updated = time.Now()
-	_, err := db.db.Collection("user").InsertOne(ctx, user)
-	return err
+	user.Created = time.Now().UTC()
+	user.Updated = user.Created
+	res, err := db.db.Collection("user").InsertOne(ctx, user)
+	if err != nil {
+		return err
+	}
+
+	user.ID, _ = res.InsertedID.(string)
+
+	return nil
 }
 
 func (db *UserDB) DeleteByID(ctx context.Context, id string) error {
