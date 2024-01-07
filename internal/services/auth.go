@@ -22,7 +22,7 @@ func (s *AuthService) generateTokens(telegramID int64) (*httpModels.NewTokenResp
 	auth := new(httpModels.NewTokenResponse)
 
 	authClaims := &httpModels.Claims{
-		Scope:      httpModels.Api,
+		Scope:      httpModels.ApiScope,
 		TelegramID: telegramID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Hour)),
@@ -37,7 +37,7 @@ func (s *AuthService) generateTokens(telegramID int64) (*httpModels.NewTokenResp
 	}
 
 	refreshClaims := &httpModels.Claims{
-		Scope:      httpModels.Auth,
+		Scope:      httpModels.AuthScope,
 		TelegramID: telegramID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
@@ -60,27 +60,23 @@ func (s *AuthService) AuthUser(ctx context.Context, user *httpModels.AuthUser) (
 		return nil, err
 	}
 
-	userID, err := s.userDB.UpdateByTelegramID(ctx, user.TelegramID)
-	if err != nil {
+	dbUser := &dbModels.User{
+		TelegramID: user.TelegramID,
+		Username:   user.Username,
+		LastAuth:   user.AuthDate,
+	}
+	if err = s.userDB.UpdateByTelegramID(ctx, user.TelegramID, dbUser); err != nil {
 		return nil, err
 	}
 
-	if userID == "" {
-		dbUser := &dbModels.User{
-			TelegramID: user.TelegramID,
-			Username:   user.Username,
-			LastAuth:   user.AuthDate,
-		}
-
+	if dbUser.ID.IsZero() {
 		if err = s.userDB.Add(ctx, dbUser); err != nil {
 			return nil, err
 		}
-
-		userID = dbUser.ID
 	}
 
 	auth := &dbModels.Auth{
-		UserID:       userID,
+		UserID:       dbUser.ID,
 		Token:        authData.Token,
 		RefreshToken: authData.RefreshToken,
 	}

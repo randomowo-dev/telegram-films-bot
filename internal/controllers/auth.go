@@ -66,7 +66,7 @@ func (c *AuthController) AuthUser(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
-	code, err := c.authMiddleware.Auth(ctx, httpModels.Auth)
+	code, err := c.authMiddleware.Auth(ctx, httpModels.AuthScope)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (c *AuthController) RefreshToken(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) LogOut(ctx *fiber.Ctx) error {
-	code, err := c.authMiddleware.Auth(ctx, httpModels.Auth)
+	code, err := c.authMiddleware.Auth(ctx, httpModels.AuthScope)
 	if err != nil {
 		return err
 	}

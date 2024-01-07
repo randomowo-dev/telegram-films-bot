@@ -6,6 +6,7 @@ import (
 
 	dbModels "github.com/randomowo-dev/telegram-films-bot/internal/models/database"
 	"github.com/randomowo-dev/telegram-films-bot/internal/transport/nosql"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -30,9 +31,9 @@ func (db *AuthDB) Exists(ctx context.Context, token string) (bool, error) {
 	return count > 0, nil
 }
 
-func (db *AuthDB) DeleteByUserID(ctx context.Context, userID string) error {
+func (db *AuthDB) DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error {
 	filter := bson.M{"user_id": userID}
-	_, err := db.db.Collection("auth").DeleteOne(ctx, filter)
+	_, err := db.db.Collection("auth").DeleteMany(ctx, filter)
 	return err
 }
 

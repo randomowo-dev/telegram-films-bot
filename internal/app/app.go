@@ -3,9 +3,13 @@ package app
 import (
 	"context"
 	netHttp "net/http"
+	"sync"
 
+	"github.com/gofiber/fiber/v2/middleware/basicauth"
+	"github.com/randomowo-dev/telegram-films-bot/internal/config"
 	"github.com/randomowo-dev/telegram-films-bot/internal/controllers"
 	"github.com/randomowo-dev/telegram-films-bot/internal/middlewares"
+	dbModels "github.com/randomowo-dev/telegram-films-bot/internal/models/database"
 	httpModels "github.com/randomowo-dev/telegram-films-bot/internal/models/http"
 	"github.com/randomowo-dev/telegram-films-bot/internal/services"
 
@@ -23,9 +27,9 @@ import (
 func Run() {
 	reg := prometheus.NewRegistry()
 	server := http.NewAppServer()
-	// client := httpClient.NewClient()
-	// kinopoiskApiUnofficialClient := http.NewKinopoiskApiUnofficialClient(client)
-	globalContext, _ := context.WithCancel(context.Background())
+
+	globalContext, cancelGlobalContextFunc := context.WithCancelCause(context.Background())
+
 	db := nosql.NewDB()
 	if err := db.Connect(globalContext); err != nil {
 		panic(err)
@@ -33,12 +37,19 @@ func Run() {
 
 	userDB := database.NewUserDB(db)
 	authDB := database.NewAuthDB(db)
-	// listDB := database.NewListDB(db)
 
 	jwtAuth := middlewares.NewJWTAuthorization(authDB)
-	authController := controllers.NewAuthController(services.NewAuthService(userDB, authDB), jwtAuth)
+	roleChecker := middlewares.NewRoleChecker(userDB)
 
-	manageGroup := server.Group("/manage", middlewares.BasicAuthorization)
+	manageGroup := server.Group(
+		"/manage", basicauth.New(
+			basicauth.Config{
+				Users: map[string]string{
+					config.ServerBasicUsername: config.ServerBasicPassword,
+				},
+			},
+		),
+	)
 	manageGroup.Add(
 		netHttp.MethodGet, "/health", func(ctx *fiber.Ctx) error {
 			ctx.Status(netHttp.StatusOK)
@@ -54,53 +65,39 @@ func Run() {
 	apiGroup := server.Group("/api")
 	groupV1 := apiGroup.Group("/v1")
 
+	// /api/v1/auth
+	authController := controllers.NewAuthController(services.NewAuthService(userDB, authDB), jwtAuth)
 	authGroup := groupV1.Group("/auth")
-
 	authGroup.Add(netHttp.MethodGet, "/", authController.AuthUser)
 	authGroup.Add(netHttp.MethodPut, "/refresh", authController.RefreshToken)
 	authGroup.Add(netHttp.MethodPost, "/logout", authController.LogOut)
 
-	listGroup := groupV1.Group("list", jwtAuth.Middleware(httpModels.Api))
-
-	listGroup.Add(
-		netHttp.MethodGet, "/", func(ctx *fiber.Ctx) error {
-			return ctx.SendString("test")
-		},
+	// /api/v1/config
+	configController := controllers.NewConfigController(services.NewConfigService())
+	configGroup := groupV1.Group(
+		"/config",
+		jwtAuth.Middleware(httpModels.ApiScope),
+		roleChecker.Middleware(dbModels.AdminRole),
 	)
+	configGroup.Add(netHttp.MethodGet, "/", configController.Config)
 
-	_ = server.Listen()
+	// /api/v1/user
+	userController := controllers.NewAdminController(services.NewUserService(userDB))
+	userGroup := groupV1.Group(
+		"/user",
+		jwtAuth.Middleware(httpModels.ApiScope),
+		roleChecker.Middleware(dbModels.AdminRole),
+	)
+	userGroup.Add(netHttp.MethodGet, "/", userController.List)
+	userGroup.Add(netHttp.MethodPut, "/:id", userController.UpdateUserRole)
 
-	// listGroup.Add(
-	// 	netHttp.MethodGet, "/", func(ctx *fiber.Ctx) error {
-	// 		// TODO: get all
-	// 		return nil
-	// 	},
-	// )
-	// listGroup.Add(
-	// 	netHttp.MethodGet, "/:id", func(ctx *fiber.Ctx) error {
-	// 		// TODO: get by id
-	// 		id := ctx.Params("id")
-	// 		return nil
-	// 	},
-	// )
-	// listGroup.Add(
-	// 	netHttp.MethodPost, "/", func(ctx *fiber.Ctx) error {
-	// 		// TODO: add new
-	// 		return nil
-	// 	},
-	// )
-	// listGroup.Add(
-	// 	netHttp.MethodPut, "/:id", func(ctx *fiber.Ctx) error {
-	// 		// TODO: update by id
-	// 		id := ctx.Params("id")
-	// 		return nil
-	// 	},
-	// )
-	// listGroup.Add(
-	// 	netHttp.MethodDelete, "/:id", func(ctx *fiber.Ctx) error {
-	// 		// TODO: delete by id
-	// 		id := ctx.Params("id")
-	// 		return nil
-	// 	},
-	// )
+	wg := new(sync.WaitGroup)
+
+	wg.Add(1)
+	go func(globalContext context.Context, cancelContextFunc context.CancelCauseFunc, wg *sync.WaitGroup) {
+		defer wg.Done()
+		cancelContextFunc(server.Listen())
+	}(globalContext, cancelGlobalContextFunc, wg)
+
+	wg.Wait()
 }

@@ -15,8 +15,8 @@ type Claims struct {
 type Scope uint8
 
 const (
-	Auth Scope = iota
-	Api
+	AuthScope Scope = iota
+	ApiScope
 )
 
 type AuthUser struct {
