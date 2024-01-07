@@ -3,21 +3,27 @@ version: "3.9"
 services:
   nginx:
     image: nginx:latest
+
     volumes:
       - "../configs/nginx:/etc/nginx/"
       - "../website/film_list/dist:/var/www/html"
+
     ports:
       - "80:80"
       - "443:443"
+
     depends_on:
       - backend
 
   backend:
     image: ${COMPOSE_PROJECT}_backend:go1.21
+
     pull_policy: never
+
     build:
       context: ../
       dockerfile: build/package/backend
+
     environment:
       APP_NAME: ${APP_NAME}
       APP_VERSION: ${APP_VERSION}
@@ -33,17 +39,25 @@ services:
       SERVER_PORT: ${SERVER_PORT}
 
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+
+    volumes:
+      - "../web:/var/www/html"
+
     depends_on:
       - database
 
   database:
     image: mongo:latest
+
     restart: always
+
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+
     volumes:
       - "database:/data/db"
+
     ports:
       - "27017:27017"
 

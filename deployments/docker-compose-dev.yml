@@ -3,9 +3,12 @@ version: "3.9"
 services:
   backend:
     image: ${COMPOSE_PROJECT}_backend_dev:go1.21
+
     pull_policy: never
+
     build:
       context: ../
       dockerfile: build/package/backend_dev
+
     ports:
       - "8081:8081"
